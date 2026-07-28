@@ -6,7 +6,7 @@ export const v3CardPrototype = () => {return({
     data: {
         name: "",
         description: "",
-        tags: [""],
+        tags: [],
         creator: "",
         character_version: "",
         mes_example: "",
@@ -14,7 +14,7 @@ export const v3CardPrototype = () => {return({
         system_prompt: "",
         post_history_instructions: "",
         first_mes: "",
-        alternate_greetings: [""],
+        alternate_greetings: [],
         personality: "",
         scenario: "",
 
@@ -44,7 +44,7 @@ export const v3CharacterBookPrototype = () => {return({
 
 export const v3CharacterBookEntryPrototype = () => {return( 
     {
-        keys: [""],
+        keys: [],
         content: "",
         extensions: {},
         enabled: true,
@@ -63,7 +63,7 @@ export const v3CharacterBookEntryPrototype = () => {return(
         comment: undefined, // Used for name in SillyTavern, can be copied from name or vice versa
 
         selective: undefined,//true,
-        secondary_keys: undefined,//[""],
+        secondary_keys: undefined,//[],
         position: undefined,//"before_char" or "after_char"
     });
 };
