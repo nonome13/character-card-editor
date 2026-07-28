@@ -24,6 +24,7 @@ import ConfirmationDialog from '../ConfirmationDialog/ConfirmationDialog';
 import default_avatar from '../../assets/default_avatar.png';
 import FileUpload from '../FileUpload/FileUpload';
 import assembleNewPng from '../../utils/assembleNewPng';
+import { saveImage, loadImage, deleteImage } from '../../utils/imageStorage';
 import parsePngChunks from '../../utils/parsePngChunks';
 import stripPngChunks from '../../utils/stripPngChunks';
 import { AltGreetingTabPanel, BasicFieldTabPanel, GroupGreetingPanel, LorebookPanel, MacrosPanel } from '../TabPanels/TabPanels';
@@ -536,58 +537,65 @@ const TavernCardEditor = ({toggleTheme}) => {
     }
 
     async function handlePreviewUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+        const file = event.target.files[0];
+        if (!file) return;
 
-    const objectUrl = URL.createObjectURL(file);
+        const objectUrl = URL.createObjectURL(file);
+        
+        if (file.type.startsWith("image/") && file.type !== "image/png") {
+            const img = new Image();
+            img.src = objectUrl;
+            img.onload = async () => {
+                URL.revokeObjectURL(objectUrl);
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
 
-    if (file.type.startsWith("image/") && file.type !== "image/png") {
-        const img = new Image();
-        img.src = objectUrl;
-        img.onload = async () => {
-            URL.revokeObjectURL(objectUrl); // <-- prevents memory leak
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0);
+                const base64String = canvas.toDataURL("image/png");
+                const pngBlob = await (await fetch(base64String)).blob();
+                const compressedPngBlob = await imageCompression(pngBlob, {
+                    maxSizeMb: 1,
+                    useWebWorker: true,
+                });
+                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
 
-            const base64String = canvas.toDataURL("image/png");
-            const pngBlob = await (await fetch(base64String)).blob();
-            const compressedPngBlob = await imageCompression(pngBlob, {
-                maxSizeMb: 1,
-                useWebWorker: true,
-            });
-            const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
+                setPreview(compressedBase64Png);
+                try {
+                    await saveImage('previewImage', compressedBase64Png);
+                } catch (e) {
+                    console.error("Failed to save image to IndexedDB:", e);
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                console.error("Failed to load image");
+            };
+        } else if (file.type === "image/png") {
+            try {
+                const inputBuffer = await readToBuffer(file);
+                const arrayBuffer = await stripPngChunks(inputBuffer);
+                const pngBlob = new Blob([arrayBuffer], { type: "image/png" });
+                const compressedPngBlob = await imageCompression(pngBlob, {
+                    maxSizeMb: 1,
+                    useWebWorker: true,
+                });
+                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
 
-            setPreview(compressedBase64Png);
-            // Don't store multi-MB base64 in localStorage
-            localStorage.setItem("previewImage", "stored");
-        };
-        img.onerror = () => {
-            URL.revokeObjectURL(objectUrl);
-            console.error("Failed to load image");
-        };
-    } else if (file.type === "image/png") {
-        try {
-            const inputBuffer = await readToBuffer(file);
-            const arrayBuffer = await stripPngChunks(inputBuffer);
-            const pngBlob = new Blob([arrayBuffer], { type: "image/png" });
-            const compressedPngBlob = await imageCompression(pngBlob, {
-                maxSizeMb: 1,
-                useWebWorker: true,
-            });
-            const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
-
-            setPreview(compressedBase64Png);
-            localStorage.setItem("previewImage", "stored");
-        } catch (error) {
-            console.error("Error stripping PNG chunks:", error);
+                setPreview(compressedBase64Png);
+                try {
+                    await saveImage('previewImage', compressedBase64Png);
+                    catch (e) {
+                    console.error("Failed to save image to IndexedDB:", e);
+                }
+            } catch (error) {
+                console.error("Error stripping PNG chunks:", error);
+            }
+        } else {
+            console.error("Invalid file type upload");
         }
-    } else {
-        console.error("Invalid file type upload");
     }
-}
 
     const handlePromoteClick = (index) => {
         setPendingGreeting(index);
@@ -636,7 +644,8 @@ const TavernCardEditor = ({toggleTheme}) => {
         setPreview(default_avatar);
         setCardData(v3CardPrototype());
         localStorage.setItem("cardData", JSON.stringify(v3CardPrototype()));
-        localStorage.setItem("previewImage", default_avatar);
+        localStorage.removeItem("previewImage");
+        deleteImage('previewImage').catch(() => {});
     };
 
     const readToBuffer = (infile) => {
@@ -703,14 +712,18 @@ const TavernCardEditor = ({toggleTheme}) => {
         })()
     }, [file]);
 
-useEffect(() => {
-    const storedPreviewFlag = localStorage.getItem("previewImage");
-    if (storedPreviewFlag === "stored") {
-        // Image was stored in previous session but we don't restore base64
-        // from localStorage to avoid quota issues. Preview stays as default_avatar
-        // until user uploads again, or you can implement IndexedDB here later.
-    }
-}, []);
+        useEffect(() => {
+            (async () => {
+                try {
+                    const storedImage = await loadImage('previewImage');
+                    if (storedImage) {
+                        setPreview(storedImage);
+                    }
+                } catch (e) {
+                    console.error("Failed to load image from IndexedDB:", e);
+                }
+            })();
+        }, []);
 
     return(
         <Container maxWidth={false}>
