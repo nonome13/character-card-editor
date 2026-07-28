@@ -207,7 +207,7 @@ const TavernCardEditor = ({toggleTheme}) => {
             if (Array.isArray(outJson.data.character_book.entries)) {
                 outJson.data.character_book.entries.forEach(ensureExtensions);
             }
-        
+        }
         return outJson;
     };
 
