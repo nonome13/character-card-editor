@@ -110,7 +110,11 @@ const TavernCardEditor = ({toggleTheme}) => {
                 scenario: v3.scenario || "",
                 first_mes: v3.first_mes || "",
                 mes_example: v3.mes_example || "",
-                creator_notes: v3.creator_notes || "",
+                creator_notes: (() => {
+                    const warning = "This character card is Character Card V3, but it is loaded as a Character Card V2. Please use a Character Card V3 compatible application to use this character card properly.";
+                    const existing = v3.creator_notes || "";
+                    return existing ? `${warning}\n\n${existing}` : warning;
+                })(),
                 system_prompt: v3.system_prompt || "",
                 post_history_instructions: v3.post_history_instructions || "",
                 alternate_greetings: v3.alternate_greetings || [],
