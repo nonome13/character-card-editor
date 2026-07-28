@@ -425,51 +425,60 @@ const TavernCardEditor = ({toggleTheme}) => {
         }
     }
 
-    async function handlePreviewUpload (event) {
+    async function handlePreviewUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-        if (file && file.type.startsWith("image/") && file.type !== "image/png") {
+
+        const objectUrl = URL.createObjectURL(file);
+
+        if (file.type.startsWith("image/") && file.type !== "image/png") {
             const img = new Image();
-            img.src = URL.createObjectURL(file);
+            img.src = objectUrl;
             img.onload = async () => {
+                URL.revokeObjectURL(objectUrl);
                 const canvas = document.createElement("canvas");
                 canvas.width = img.width;
                 canvas.height = img.height;
                 const ctx = canvas.getContext("2d");
-
                 ctx.drawImage(img, 0, 0);
 
                 const base64String = canvas.toDataURL("image/png");
                 const pngBlob = await (await fetch(base64String)).blob();
-                // Compressing converted PNGs
-                const compressedPngBlob = await imageCompression(pngBlob, {maxSizeMb: 1, useWebWorker: true});
+                const compressedPngBlob = await imageCompression(pngBlob, {
+                    maxSizeMb: 1,
+                    useWebWorker: true,
+                });
+                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
 
-                const comrpessedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
-
-                setPreview(comrpessedBase64Png);
-                localStorage.setItem("previewImage", comrpessedBase64Png);
-            }
-        }
-        else if (file && file.type === "image/png") {
+                setPreview(compressedBase64Png);
+                // Store only a flag, not the base64 image, to avoid localStorage quota crash
+                localStorage.setItem("previewImage", "stored");
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                console.error("Failed to load image");
+            };
+        } else if (file.type === "image/png") {
             try {
                 const inputBuffer = await readToBuffer(file);
                 const arrayBuffer = await stripPngChunks(inputBuffer);
-                const pngBlob = new Blob([arrayBuffer], {type: "image/png"});
-                const compressedPngBlob = await imageCompression(pngBlob, {maxSizeMb: 1, useWebWorker: true});
+                const pngBlob = new Blob([arrayBuffer], { type: "image/png" });
+                const compressedPngBlob = await imageCompression(pngBlob, {
+                    maxSizeMb: 1,
+                    useWebWorker: true,
+                });
+                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
 
-                const comrpessedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
-
-                setPreview(comrpessedBase64Png);
-                localStorage.setItem("previewImage", comrpessedBase64Png);
-                //const base64String = await convertBufferToBase64(arrayBuffer);
-                //setPreview(base64String);
-                //localStorage.setItem("previewImage", base64String);
+                setPreview(compressedBase64Png);
+                localStorage.setItem("previewImage", "stored");
             } catch (error) {
                 console.error("Error stripping PNG chunks and converting to base64: ", error);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
             }
         } else {
+            URL.revokeObjectURL(objectUrl);
             console.error("Invalid file type upload");
-            return;
         }
     }
 
@@ -576,7 +585,8 @@ const TavernCardEditor = ({toggleTheme}) => {
 
     useEffect(() => {
         const storedPreviewImage = localStorage.getItem("previewImage");
-        if (storedPreviewImage){
+        if (storedPreviewImage && storedPreviewImage !== "stored") {
+            // Legacy: old base64 data might still be in localStorage from before the fix
             setPreview(storedPreviewImage);
         }
     }, []);
