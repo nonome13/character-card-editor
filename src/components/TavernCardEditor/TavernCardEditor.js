@@ -536,61 +536,58 @@ const TavernCardEditor = ({toggleTheme}) => {
     }
 
     async function handlePreviewUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-        const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
 
-        if (file.type.startsWith("image/") && file.type !== "image/png") {
-            const img = new Image();
-            img.src = objectUrl;
-            img.onload = async () => {
-                URL.revokeObjectURL(objectUrl);
-                const canvas = document.createElement("canvas");
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0);
+    if (file.type.startsWith("image/") && file.type !== "image/png") {
+        const img = new Image();
+        img.src = objectUrl;
+        img.onload = async () => {
+            URL.revokeObjectURL(objectUrl); // <-- prevents memory leak
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
 
-                const base64String = canvas.toDataURL("image/png");
-                const pngBlob = await (await fetch(base64String)).blob();
-                const compressedPngBlob = await imageCompression(pngBlob, {
-                    maxSizeMb: 1,
-                    useWebWorker: true,
-                });
-                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
+            const base64String = canvas.toDataURL("image/png");
+            const pngBlob = await (await fetch(base64String)).blob();
+            const compressedPngBlob = await imageCompression(pngBlob, {
+                maxSizeMb: 1,
+                useWebWorker: true,
+            });
+            const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
 
-                setPreview(compressedBase64Png);
-                // Store only a flag, not the base64 image, to avoid localStorage quota crash
-                localStorage.setItem("previewImage", "stored");
-            };
-            img.onerror = () => {
-                URL.revokeObjectURL(objectUrl);
-                console.error("Failed to load image");
-            };
-        } else if (file.type === "image/png") {
-            try {
-                const inputBuffer = await readToBuffer(file);
-                const arrayBuffer = await stripPngChunks(inputBuffer);
-                const pngBlob = new Blob([arrayBuffer], { type: "image/png" });
-                const compressedPngBlob = await imageCompression(pngBlob, {
-                    maxSizeMb: 1,
-                    useWebWorker: true,
-                });
-                const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
-
-                setPreview(compressedBase64Png);
-                localStorage.setItem("previewImage", "stored");
-            } catch (error) {
-                console.error("Error stripping PNG chunks and converting to base64: ", error);
-            } finally {
-                URL.revokeObjectURL(objectUrl);
-            }
-        } else {
+            setPreview(compressedBase64Png);
+            // Don't store multi-MB base64 in localStorage
+            localStorage.setItem("previewImage", "stored");
+        };
+        img.onerror = () => {
             URL.revokeObjectURL(objectUrl);
-            console.error("Invalid file type upload");
+            console.error("Failed to load image");
+        };
+    } else if (file.type === "image/png") {
+        try {
+            const inputBuffer = await readToBuffer(file);
+            const arrayBuffer = await stripPngChunks(inputBuffer);
+            const pngBlob = new Blob([arrayBuffer], { type: "image/png" });
+            const compressedPngBlob = await imageCompression(pngBlob, {
+                maxSizeMb: 1,
+                useWebWorker: true,
+            });
+            const compressedBase64Png = await imageCompression.getDataUrlFromFile(compressedPngBlob);
+
+            setPreview(compressedBase64Png);
+            localStorage.setItem("previewImage", "stored");
+        } catch (error) {
+            console.error("Error stripping PNG chunks:", error);
         }
+    } else {
+        console.error("Invalid file type upload");
     }
+}
 
     const handlePromoteClick = (index) => {
         setPendingGreeting(index);
@@ -706,13 +703,14 @@ const TavernCardEditor = ({toggleTheme}) => {
         })()
     }, [file]);
 
-    useEffect(() => {
-        const storedPreviewImage = localStorage.getItem("previewImage");
-        if (storedPreviewImage && storedPreviewImage !== "stored") {
-            // Legacy: old base64 data might still be in localStorage from before the fix
-            setPreview(storedPreviewImage);
-        }
-    }, []);
+useEffect(() => {
+    const storedPreviewFlag = localStorage.getItem("previewImage");
+    if (storedPreviewFlag === "stored") {
+        // Image was stored in previous session but we don't restore base64
+        // from localStorage to avoid quota issues. Preview stays as default_avatar
+        // until user uploads again, or you can implement IndexedDB here later.
+    }
+}, []);
 
     return(
         <Container maxWidth={false}>
