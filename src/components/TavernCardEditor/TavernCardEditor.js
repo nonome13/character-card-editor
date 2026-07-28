@@ -79,11 +79,57 @@ const TavernCardEditor = ({toggleTheme}) => {
     ]
 
     const backfillV2Data = (inJson) => {
-        if (inJson.spec === "chara_card_v2" && inJson.spec_version === "2.0") return inJson;
-        const outJson = structuredClone(inJson);
-        outJson.spec = 'chara_card_v2';
-        outJson.spec_version = '2.0';
-        return outJson;
+        if (inJson.spec === "chara_card_v2" && inJson.spec_version === "2.0") {
+            return structuredClone(inJson);
+        }
+        const v3 = inJson.data;
+        const v2Entries = (v3.character_book?.entries || []).map((entry) => ({
+            keys: entry.keys || [],
+            content: entry.content || "",
+            extensions: entry.extensions || {},
+            enabled: entry.enabled ?? true,
+            insertion_order: entry.insertion_order ?? 0,
+            case_sensitive: entry.case_sensitive,
+            name: entry.name,
+            priority: entry.priority,
+            id: entry.id,
+            comment: entry.comment,
+            selective: entry.selective,
+            secondary_keys: entry.secondary_keys,
+            constant: entry.constant,
+            position: entry.position,
+        }));
+
+        return {
+            spec: "chara_card_v2",
+            spec_version: "2.0",
+            data: {
+                name: v3.name || "",
+                description: v3.description || "",
+                personality: v3.personality || "",
+                scenario: v3.scenario || "",
+                first_mes: v3.first_mes || "",
+                mes_example: v3.mes_example || "",
+                creator_notes: v3.creator_notes || "",
+                system_prompt: v3.system_prompt || "",
+                post_history_instructions: v3.post_history_instructions || "",
+                alternate_greetings: v3.alternate_greetings || [],
+                character_book: v3.character_book ? {
+                    name: v3.character_book.name,
+                    description: v3.character_book.description,
+                    scan_depth: v3.character_book.scan_depth,
+                    token_budget: v3.character_book.token_budget,
+                    recursive_scanning: v3.character_book.recursive_scanning,
+                    extensions: v3.character_book.extensions || {},
+                    entries: v2Entries,
+                } : undefined,
+                tags: v3.tags || [],
+                creator: v3.creator || "",
+                character_version: v3.character_version || "",
+                extensions: v3.extensions || {},
+                group_only_greetings: v3.group_only_greetings || [],
+            }
+        };
     };
 
 
