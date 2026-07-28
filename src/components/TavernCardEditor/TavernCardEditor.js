@@ -80,11 +80,12 @@ const TavernCardEditor = ({toggleTheme}) => {
 
     const backfillV2Data = (inJson) => {
         if (inJson.spec === "chara_card_v2" && inJson.spec_version === "2.0") return inJson;
-        const outJson = inJson;
+        const outJson = structuredClone(inJson);
         outJson.spec = 'chara_card_v2';
         outJson.spec_version = '2.0';
         return outJson;
     };
+
 
     const backfillLorebookNames = () => {
         const lorebookEntries = [...cardData.data.character_book.entries].map((entry) => {
@@ -107,16 +108,19 @@ const TavernCardEditor = ({toggleTheme}) => {
     };
 
     const populateV3Fields = (inJson) => {
-        const outJson = inJson;
-        if (!inJson.spec === "chara_card_v3" && !inJson.spec_version === "3.0"){
+        const outJson = structuredClone(inJson);
+        if (outJson.spec !== "chara_card_v3" || outJson.spec_version !== "3.0") {
             outJson.spec = 'chara_card_v3';
-        outJson.spec_version = '3.0';
+            outJson.spec_version = '3.0';
         }
         const currTime = Math.floor(Date.now() / 1000);
-        if (!Object.hasOwn(outJson.data, "creation_date") || typeof outJson.data.creation_date === "undefined") outJson.data.creation_date = currTime;
+        if (!Object.hasOwn(outJson.data, "creation_date") || typeof outJson.data.creation_date === "undefined") {
+            outJson.data.creation_date = currTime;
+        }
         outJson.data.modification_date = currTime;
         return outJson;
     };
+
 
     const closeDeleteGreetingConfirmation = () => {
         setDeleteGreetingConfirmation(false);
@@ -477,7 +481,7 @@ const TavernCardEditor = ({toggleTheme}) => {
     const handlePromoteGreeting = () => {
         const firstMes = cardData.data.first_mes;
         const altGreetings = [...cardData.data.alternate_greetings];
-        const toPromote = altGreetings.splice(pendingGreeting, 1)
+        const [toPromote] = altGreetings.splice(pendingGreeting, 1);
         altGreetings.unshift(firstMes);
         setCardData((prevState) => ({
             ...prevState,
@@ -486,7 +490,7 @@ const TavernCardEditor = ({toggleTheme}) => {
                 first_mes: toPromote,
                 alternate_greetings: altGreetings
             }
-        }))
+        }));
         setPromoteGreeting(false);
         setPendingGreeting(-1);
     };
