@@ -14,7 +14,7 @@ export default async function assembleNewPng (arrayBuffer, dataJson) {
 
         let offset = 8; // Skipping the PNG header
         let ihdrFound = false;
-        let idatFound = false;
+        let textChunksInserted = false;
 
         newChunks.push(new Uint8Array(arrayBuffer.slice(0, offset))); // Copying the original header
 
@@ -34,11 +34,7 @@ export default async function assembleNewPng (arrayBuffer, dataJson) {
             newChunks.push(chunk);
             if (type === "IHDR") {
                 ihdrFound = true;
-            } else if (type === "IDAT" && ihdrFound){
-                idatFound = true;
-            }
-
-            if (idatFound){
+            } else if (type === "IDAT" && ihdrFound && !textChunksInserted) {
                 listOfChunks.forEach((item) => {
                     // Creating the new tEXt chunk
                     const textChunkData = new TextEncoder().encode(`${item.keyword}\0${Base64.encode(JSON.stringify(item.data))}`)
@@ -61,11 +57,10 @@ export default async function assembleNewPng (arrayBuffer, dataJson) {
                     const crc = crc32(textChunk.subarray(4, 8 + textChunkLength));
                     view.setUint32(8 + textChunkLength, crc);
 
-                    // Adds the tEXt chunk after the IDAT chunk
+                    // Adds the tEXt chunk after the first IDAT chunk
                     newChunks.push(textChunk);
-                    
                 });
-                idatFound = false;
+                textChunksInserted = true;
             }
             // Moving to next chunk
             offset += 8 + length + 4
