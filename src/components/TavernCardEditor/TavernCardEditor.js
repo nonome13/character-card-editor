@@ -164,6 +164,15 @@ const TavernCardEditor = ({toggleTheme}) => {
             outJson.data.creation_date = currTime;
         }
         outJson.data.modification_date = currTime;
+
+        if (outJson.data.character_book && Array.isArray(outJson.data.character_book.entries)) {
+            outJson.data.character_book.entries = outJson.data.character_book.entries.map((entry) => ({
+                ...entry,
+                use_regex: entry.use_regex ?? false,
+                extensions: entry.extensions || {},
+            }));
+        }
+        
         return outJson;
     };
 
