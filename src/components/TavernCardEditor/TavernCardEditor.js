@@ -586,7 +586,7 @@ const TavernCardEditor = ({toggleTheme}) => {
                 setPreview(compressedBase64Png);
                 try {
                     await saveImage('previewImage', compressedBase64Png);
-                    catch (e) {
+                } catch (e) {
                     console.error("Failed to save image to IndexedDB:", e);
                 }
             } catch (error) {
