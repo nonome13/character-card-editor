@@ -14,10 +14,10 @@ export const v2CardPrototype = () => {return({
         creator_notes: "",
         system_prompt: "",
         post_history_instructions: "",
-        alternate_greetings: [""],
+        alternate_greetings: [],
         character_book: undefined,//{},
 
-        tags: [""],
+        tags: [],
         creator: "",
         character_version: "",
         extensions: {},
@@ -38,7 +38,7 @@ export const v2CharacterBookPrototype = () => {return({
 })};
 
 export const v2CharacterBookEntryPrototype = () => {return ({
-    keys: [""],
+    keys: [],
     content: "",
     extensions: {},
     enabled: true,
@@ -53,7 +53,7 @@ export const v2CharacterBookEntryPrototype = () => {return ({
     id: undefined,//0,
     comment: undefined, // Used for name in SillyTavern, can be copied from name or vice versa
     selective: undefined,//true,
-    secondary_keys: undefined,//[""],
+    secondary_keys: undefined,//[],
     constant: undefined,//false,
     position: undefined,//"before_char" or "after_char"
 })};
