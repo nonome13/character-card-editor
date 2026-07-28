@@ -31,6 +31,29 @@ import { useCard } from '../../context/CardContext';
 import { v3CardPrototype } from '../../utils/v3CardPrototype';
 import './TavernCardEditor.css';
 
+const ensureExtensions = (obj) => {
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        if (!obj.extensions || typeof obj.extensions !== 'object' || Array.isArray(obj.extensions)) {
+            obj.extensions = {};
+        }
+    }
+    return obj;
+};
+
+const sanitizeCard = (card) => {
+    if (!card || !card.data) return card;
+    
+    ensureExtensions(card.data);
+    
+    if (card.data.character_book) {
+        ensureExtensions(card.data.character_book);
+        if (Array.isArray(card.data.character_book.entries)) {
+            card.data.character_book.entries.forEach(ensureExtensions);
+        }
+    }
+    return card;
+};
+
 const TavernCardEditor = ({toggleTheme}) => {
     const theme = useTheme();
 
@@ -176,6 +199,13 @@ const TavernCardEditor = ({toggleTheme}) => {
                 extensions: entry.extensions || {},
             }));
         }
+
+        ensureExtensions(outJson.data);
+        if (outJson.data.character_book) {
+            ensureExtensions(outJson.data.character_book);
+            if (Array.isArray(outJson.data.character_book.entries)) {
+                outJson.data.character_book.entries.forEach(ensureExtensions);
+            }
         
         return outJson;
     };
@@ -299,8 +329,9 @@ const TavernCardEditor = ({toggleTheme}) => {
                                 handleLorebookImportLogic(parsedCardData.data.character_book);
                                 return;
                             }
-                            setCardData(parsedCardData);
-                            localStorage.setItem("cardData", JSON.stringify(parsedCardData));
+                            const sanitized = sanitizeCard(parsedCardData);
+                            setCardData(sanitized);
+                            localStorage.setItem("cardData", JSON.stringify(sanitized));
                             console.log("V3 Card info found");
                             console.log(parsedCardData);
                             if (typeof parsedCardData.data.character_book !== "undefined" && parsedCardData.data.character_book.entries.length > 0)
@@ -440,6 +471,12 @@ const TavernCardEditor = ({toggleTheme}) => {
     };
 
     const handleLorebookImportLogic = (newLorebook) => {
+        if (newLorebook) {
+            ensureExtensions(newLorebook);
+            if (Array.isArray(newLorebook.entries)) {
+                newLorebook.entries.forEach(ensureExtensions);
+            }
+        }
         setCardData((prevState) => ({
             ...prevState,
             data: {
@@ -461,10 +498,12 @@ const TavernCardEditor = ({toggleTheme}) => {
     }
 
     const handleOverwriteFile = () => {
-        setCardData(pendingJson);
-        scanLorebookEntryNames(pendingJson.data.character_book.entries);
+        const sanitized = sanitizeCard(pendingJson);
+        setCardData(sanitized);
+        localStorage.setItem("cardData", JSON.stringify(sanitized));
+        scanLorebookEntryNames(sanitized.data.character_book.entries);
         setOverwriteConfirmation(false);
-        setPendingJson(null)
+        setPendingJson(null);
     };
 
     async function handlePngDownload() {
