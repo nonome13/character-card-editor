@@ -303,30 +303,41 @@ const TavernCardEditor = ({toggleTheme}) => {
     }
 
     const handleFindReplace = () => {
-        const [toFind, toReplace] = pendingFindReplace;
-        const newDescription = cardData.data.description.replaceAll(toFind, toReplace);
-        const newPersonality = cardData.data.personality.replaceAll(toFind, toReplace);
-        const newScenario = cardData.data.scenario.replaceAll(toFind, toReplace);
-        const newGreeting = cardData.data.first_mes.replaceAll(toFind, toReplace);
-        const newExample = cardData.data.mes_example.replaceAll(toFind, toReplace);
-        const newAlternates = cardData.data.alternate_greetings.length > 0 ? [...cardData.data.alternate_greetings].map((greeting) => greeting.replaceAll(toFind, toReplace)) : []
-        const newGropGreetings = cardData.data.group_only_greetings.length > 0 ? [...cardData.data.group_only_greetings].map((greeting) => greeting.replaceAll(toFind, toReplace)) : [];
-        setCardData((prevState) => ({
-            ...prevState,
-            data: {
-                ...prevState.data,
-                description: newDescription,
-                personality: newPersonality,
-                scenario: newScenario,
-                first_mes: newGreeting,
-                mes_example: newExample,
-                alternate_greetings: newAlternates,
-                group_only_greetings: newGropGreetings
-            }
-        }));
-        setFindReplaceConfirmation(false);
-        setPendingFindReplace([]);
-    }
+    const [toFind, toReplace] = pendingFindReplace;
+
+    const replaceInString = (str) => str.replaceAll(toFind, toReplace);
+
+    // Build the updated lorebook if one exists
+    const newLorebook = cardData.data.character_book
+        ? {
+              ...cardData.data.character_book,
+              entries: cardData.data.character_book.entries.map((entry) => ({
+                  ...entry,
+                  content: replaceInString(entry.content),
+                  keys: entry.keys.map((k) => replaceInString(k)),
+                  name: entry.name ? replaceInString(entry.name) : entry.name,
+                  comment: entry.comment ? replaceInString(entry.comment) : entry.comment,
+              })),
+          }
+        : undefined;
+
+    setCardData((prevState) => ({
+        ...prevState,
+        data: {
+            ...prevState.data,
+            description: replaceInString(prevState.data.description),
+            personality: replaceInString(prevState.data.personality),
+            scenario: replaceInString(prevState.data.scenario),
+            first_mes: replaceInString(prevState.data.first_mes),
+            mes_example: replaceInString(prevState.data.mes_example),
+            alternate_greetings: prevState.data.alternate_greetings.map(replaceInString),
+            group_only_greetings: prevState.data.group_only_greetings.map(replaceInString),
+            character_book: newLorebook,  // ← added
+        },
+    }));
+    setFindReplaceConfirmation(false);
+    setPendingFindReplace([]);
+};
 
     const handleFindReplaceClick = (toFind, toReplace) => {
         setPendingFindReplace([toFind, toReplace]);
