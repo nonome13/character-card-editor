@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import debounce from "lodash.debounce";
 import imageCompression from 'browser-image-compression';
 
