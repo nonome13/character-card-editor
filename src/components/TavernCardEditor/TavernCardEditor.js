@@ -551,17 +551,30 @@ const TavernCardEditor = ({toggleTheme}) => {
     };
 
     // eslint-disable-next-line
-    const debouncedSave = useCallback(
-        debounce((data) => {
-            localStorage.setItem("cardData", JSON.stringify(data));
-        }, 5000), []
-    );
+    const debouncedSaveRef = useRef(null);
 
     useEffect(() => {
-        if (cardData) {
-            debouncedSave(cardData);
+        // Create or refresh the debounced function
+        debouncedSaveRef.current = debounce((data) => {
+            try {
+                localStorage.setItem("cardData", JSON.stringify(data));
+            } catch (e) {
+                console.error("Failed to save card data:", e);
+            }
+        }, 5000);
+
+        return () => {
+            if (debouncedSaveRef.current) {
+                debouncedSaveRef.current.cancel();
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (cardData && debouncedSaveRef.current) {
+            debouncedSaveRef.current(cardData);
         }
-    }, [cardData, debouncedSave]);
+    }, [cardData]);
 
     useEffect(() => {
         (async () => {
