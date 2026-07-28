@@ -417,8 +417,9 @@ const TavernCardEditor = ({toggleTheme}) => {
             const respBlob = await response.blob();
             const arrayBuffer = await respBlob.arrayBuffer();
             const strippedPng = await stripPngChunks(arrayBuffer);
-            const outgoingV3 = populateV3Fields(cardData);
-            const outgoingV2 = backfillV2Data(cardData);
+            const outgoingV3 = populateV3Fields(structuredClone(cardData));
+            const outgoingV2 = backfillV2Data(structuredClone(cardData));
+
             const assembledPng = await assembleNewPng(strippedPng, [{keyword:"ccv3", data:outgoingV3}, {keyword: "chara", data:outgoingV2}]);
             const blob = new Blob([assembledPng], { type: 'image/png' });
 
